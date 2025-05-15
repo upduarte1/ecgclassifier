@@ -128,6 +128,6 @@ else:
                     )
                     # Limpa estado temporário e recarrega
                     del st.session_state["temp_classificacao"]
-                    st.experimental_rerun()
+                    st.rerun()
     else:
         st.info("Envie um arquivo .xlsx com colunas 'signal_id' e 'ecg_signal'.")
