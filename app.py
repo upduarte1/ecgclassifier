@@ -60,7 +60,7 @@ if uploaded_file:
                     df_classificacoes = pd.concat([df_classificacoes, pd.DataFrame([nova_classificacao])], ignore_index=True)
                     df_classificacoes.to_csv("classificacoes.csv", index=False)
                     st.success("✅ Classificação salva com sucesso!")
-                    st.experimental_rerun()
+                    st.rerun()
         else:
             st.success("🎉 Todos os sinais foram classificados!")
             st.download_button("📥 Baixar classificações", df_classificacoes.to_csv(index=False), file_name="classificacoes.csv", mime="text/csv")
