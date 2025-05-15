@@ -72,7 +72,7 @@ if uploaded_file is not None:
                 "timestamp": timestamp
             })
             st.session_state.current_index += 1
-            st.run()
+            st.rerun()
 
     except Exception as e:
         st.error(f"Erro ao processar o arquivo: {e}")
