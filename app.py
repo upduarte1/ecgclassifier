@@ -47,6 +47,41 @@ else:
     file_xlsx = st.file_uploader("Arquivo .xlsx com sinais ECG", type=["xlsx"])
     file_csv = st.file_uploader("Arquivo .csv com classificações anteriores", type=["csv"])
 
+    # Upload do arquivo com classificações do usuário
+    file_csv = st.file_uploader("Arquivo .csv com classificações anteriores", type=["csv"])
+    
+    if file_xlsx is not None:
+        try:
+            df_ecg = pd.read_excel(file_xlsx)
+            if not {"signal_id", "ecg_signal", "heart_rate"}.issubset(df_ecg.columns):
+                st.error("O arquivo .xlsx precisa ter colunas 'signal_id', 'ecg_signal' e 'heart_rate'.")
+                st.stop()
+        except Exception as e:
+            st.error(f"Erro ao processar o .xlsx: {e}")
+            st.stop()
+    
+        # Processa classificações
+        if file_csv is not None:
+            try:
+                df_classificacoes = pd.read_csv(file_csv)
+    
+                # Garante que todas as colunas esperadas existam
+                colunas_esperadas = ["signal_id", "user", "classificacao", "comment", "timestamp"]
+                for col in colunas_esperadas:
+                    if col not in df_classificacoes.columns:
+                        df_classificacoes[col] = ""
+            except Exception as e:
+                st.error(f"Erro ao processar o .csv de classificações: {e}")
+                st.stop()
+        else:
+            # Cria novo DataFrame se não houver CSV
+            df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
+    
+        # Salva no session_state com segurança
+        st.session_state.df_classificacoes = df_classificacoes
+        st.session_state.df_ecg = df_ecg
+
+
     if file_xlsx is not None:
         try:
             df_ecg = pd.read_excel(file_xlsx)
@@ -72,8 +107,15 @@ else:
             st.session_state.df_classificacoes = df_classificacoes
 
         usuario = st.session_state.username
-        ids_classificados = st.session_state.df_classificacoes[
-            st.session_state.df_classificacoes["user"] == usuario]["signal_id"].tolist()
+        df_classificacoes = st.session_state.df_classificacoes
+        usuario = st.session_state.username
+        
+        if "user" not in df_classificacoes.columns:
+            st.error("Coluna 'user' não encontrada nas classificações.")
+            st.stop()
+        
+        ids_classificados = df_classificacoes[df_classificacoes["user"] == usuario]["signal_id"].tolist()
+
         sinais_disponiveis = df_ecg[~df_ecg["signal_id"].isin(ids_classificados)]
 
         if sinais_disponiveis.empty:
