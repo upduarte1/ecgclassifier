@@ -11,8 +11,6 @@ USERS = {"user1": "1234", "user2": "1234", "user3": "1234"}
 # Estado de sessão
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
-if "username" not in st.session_state:
-    st.session_state.username = ""
 if "df_classificacoes" not in st.session_state:
     st.session_state.df_classificacoes = None
 
@@ -28,7 +26,7 @@ if not st.session_state.authenticated:
     if login_button:
         if username in USERS and password == USERS[username]:
             st.session_state.authenticated = True
-            st.session_state.username = username
+            st.session_state.username = username  # ✅ Definido apenas se o login for válido
             st.success("Login realizado com sucesso!")
             st.experimental_rerun()
         else:
@@ -69,7 +67,7 @@ else:
         else:
             df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comentario", "timestamp"])
 
-        # Inicializa em sessão
+        # Inicializa classificações em sessão
         if st.session_state.df_classificacoes is None:
             st.session_state.df_classificacoes = df_classificacoes
 
