@@ -65,7 +65,7 @@ else:
                 st.error(f"Erro ao processar o .csv de classificações: {e}")
                 st.stop()
         else:
-            df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comentario", "timestamp"])
+            df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
 
         # Inicializa classificações em sessão
         if st.session_state.df_classificacoes is None:
@@ -103,7 +103,7 @@ else:
                     "signal_id": sinal_id,
                     "user": usuario,
                     "classificacao": classificacao,
-                    "comentario": comentario,
+                    "comment": comentario,
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 st.session_state.df_classificacoes = pd.concat([
