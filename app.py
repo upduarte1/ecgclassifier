@@ -84,6 +84,7 @@ def classificacao_interface(user):
     if st.button("Guardar e Finalizar Sessão"):
         save_and_download(st.session_state["classificacoes"])
 
+
 def save_and_download(df):
     output = io.BytesIO()
     df.to_excel(output, index=False)
