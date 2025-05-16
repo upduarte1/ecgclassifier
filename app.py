@@ -13,7 +13,7 @@ def login():
         if username in USERS and USERS[username] == password:
             st.session_state["user"] = username
             st.success("Login com sucesso!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Credenciais inválidas")
 
@@ -35,7 +35,7 @@ def upload_files():
             st.session_state["ecgs"] = ecgs
             st.session_state["classificacoes"] = classificacoes
             st.success("Ficheiros carregados com sucesso!")
-            st.experimental_rerun()
+            st.rerun()
         except Exception as e:
             st.error(f"Erro ao ler os ficheiros: {e}")
 
@@ -44,18 +44,12 @@ def classificacao_interface(user):
 
     ecgs = st.session_state["ecgs"]
     classificacoes = st.session_state["classificacoes"]
-    
-    # garantir que signal_id é string em ambos os DataFrames
-    ecgs["signal_id"] = ecgs["signal_id"].astype(str)
-    classificacoes["signal_id"] = classificacoes["signal_id"].astype(str)
-    
-        
 
     # Sinais já classificados por este utilizador
     classificados_user = classificacoes[classificacoes["user"] == int(user)]["signal_id"].unique()
-    pendentes = ecgs[~ecgs["signal_id"].isin(classificados_user)]
 
     # Selecionar sinais ainda não classificados por este user
+    pendentes = ecgs[~ecgs["signal_id"].isin(classificados_user)]
 
     if pendentes.empty:
         st.success("Todos os registos foram classificados por este utilizador.")
@@ -85,10 +79,10 @@ def classificacao_interface(user):
             ignore_index=True
         )
         st.success("Classificação registada.")
+        st.rerun()
 
     if st.button("Guardar e Finalizar Sessão"):
         save_and_download(st.session_state["classificacoes"])
-
 
 def save_and_download(df):
     output = io.BytesIO()
@@ -102,7 +96,7 @@ def save_and_download(df):
     )
     if st.button("Terminar Sessão"):
         st.session_state.clear()
-        st.experimental_rerun()
+        st.rerun()
 
 def main():
     st.set_page_config(page_title="Classificador de ECGs")
