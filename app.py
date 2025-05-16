@@ -57,22 +57,23 @@ else:
             st.error(f"Erro ao processar o .xlsx: {e}")
             st.stop()
     
-        # Processa classificações
+        import io
+        
         if file_csv is not None:
             try:
-                df_classificacoes = pd.read_csv(file_csv)
-    
-                # Garante que todas as colunas esperadas existam
-                colunas_esperadas = ["signal_id", "user", "classificacao", "comment", "timestamp"]
-                for col in colunas_esperadas:
-                    if col not in df_classificacoes.columns:
-                        df_classificacoes[col] = ""
+                file_csv.seek(0)  # Reseta o ponteiro do arquivo para o início
+                decoded = file_csv.read().decode("utf-8-sig")
+                if not decoded.strip():
+                    st.warning("⚠️ O arquivo de classificações está vazio. Será criado um novo.")
+                    df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
+                else:
+                    df_classificacoes = pd.read_csv(io.StringIO(decoded), lineterminator='\n')
             except Exception as e:
                 st.error(f"Erro ao processar o .csv de classificações: {e}")
                 st.stop()
         else:
-            # Cria novo DataFrame se não houver CSV
             df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
+
     
         # Salva no session_state com segurança
         st.session_state.df_classificacoes = df_classificacoes
