@@ -1,140 +1,96 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+import io
 
-# Configuração da página
-st.set_page_config("Classificador de ECG", layout="centered")
+# Usuários válidos
+USERS = {"1": "1234", "2": "1234", "3": "1234"}
 
-# Usuários e senhas (simples, para testes)
-USERS = {"user1": "1234", "user2": "1234", "user3": "1234"}
-
-# Estado de sessão
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "df_classificacoes" not in st.session_state:
-    st.session_state.df_classificacoes = None
-if "df_ecg" not in st.session_state:
-    st.session_state.df_ecg = None
-
-# Login
-if not st.session_state.authenticated:
-    st.title("🔐 Login")
-
-    with st.form("login_form"):
-        username = st.selectbox("Usuário", list(USERS.keys()))
-        password = st.text_input("Senha", type="password")
-        login_button = st.form_submit_button("Entrar")
-
-    if login_button:
-        if username in USERS and password == USERS[username]:
-            st.session_state.authenticated = True
-            st.session_state.username = username
-            st.success("Login realizado com sucesso!")
-            st.rerun()
+def login():
+    st.title("Login")
+    username = st.text_input("Utilizador (1, 2 ou 3)")
+    password = st.text_input("Senha", type="password")
+    if st.button("Entrar"):
+        if username in USERS and USERS[username] == password:
+            st.session_state["user"] = username
+            st.success("Login com sucesso!")
+            st.experimental_rerun()
         else:
-            st.error("Usuário ou senha inválidos.")
+            st.error("Credenciais inválidas")
 
-# Após login
-else:
-    st.title("⚕️ Classificador de ECG")
-    st.sidebar.success(f"Logado como: {st.session_state.username}")
-    if st.sidebar.button("Logout"):
-        st.session_state.authenticated = False
-        st.session_state.df_classificacoes = None
-        st.session_state.df_ecg = None
-        st.rerun()
+def upload_files():
+    st.title("Carregamento de Ficheiros")
+    ecg_file = st.file_uploader("Carregar ECGs (ecgs.xlsx)", type="xlsx", key="ecg")
+    class_file = st.file_uploader("Carregar Classificações (classificacoes.xlsx)", type="xlsx", key="class")
 
-    st.header("📤 Envie seus arquivos")
-
-    # Upload dos arquivos
-    file_ecg = st.file_uploader("Arquivo .xlsx com sinais ECG", type=["xlsx"], key="ecg_upload")
-    file_class = st.file_uploader("Arquivo .xlsx com classificações anteriores", type=["xlsx"], key="class_upload")
-
-    if file_ecg is not None:
+    if ecg_file and class_file:
         try:
-            df_ecg = pd.read_excel(file_ecg)
-            if not {"signal_id", "ecg_signal", "heart_rate"}.issubset(df_ecg.columns):
-                st.error("O arquivo .xlsx de ECG precisa conter as colunas: 'signal_id', 'ecg_signal', 'heart_rate'.")
-                st.stop()
-            st.session_state.df_ecg = df_ecg
+            ecgs = pd.read_excel(ecg_file)
+            classificacoes = pd.read_excel(class_file)
+            st.session_state["ecgs"] = ecgs
+            st.session_state["classificacoes"] = classificacoes
+            st.session_state["original_class_file"] = class_file.name
+            st.success("Ficheiros carregados com sucesso!")
+            st.experimental_rerun()
         except Exception as e:
-            st.error(f"Erro ao processar o arquivo ECG: {e}")
-            st.stop()
+            st.error(f"Erro ao ler os ficheiros: {e}")
 
-    if file_class is not None:
-        try:
-            df_classificacoes = pd.read_excel(file_class)
-            st.session_state.df_classificacoes = df_classificacoes
-        except Exception as e:
-            st.error(f"Erro ao processar o arquivo de classificações: {e}")
-            st.stop()
-    elif file_ecg is not None and st.session_state.df_classificacoes is None:
-        st.session_state.df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
+def classificacao_interface(user):
+    st.title(f"Classificação de ECGs - Utilizador {user}")
+    
+    ecgs = st.session_state["ecgs"]
+    classificacoes = st.session_state["classificacoes"]
 
-    # Prosseguir somente se ECG foi carregado
-    if st.session_state.df_ecg is not None:
-        df_ecg = st.session_state.df_ecg
-        df_classificacoes = st.session_state.df_classificacoes
-        usuario = st.session_state.username
+    class_user_col = f"class_user_{user}"
+    if class_user_col not in classificacoes.columns:
+        classificacoes[class_user_col] = None
 
-        if not "user" in df_classificacoes.columns:
-            df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
+    dados_pendentes = classificacoes[classificacoes[class_user_col].isna()]
 
-        ids_classificados = df_classificacoes[df_classificacoes["user"] == usuario]["signal_id"].tolist()
-        sinais_disponiveis = df_ecg[~df_ecg["signal_id"].isin(ids_classificados)]
+    if dados_pendentes.empty:
+        st.success("Todos os registos foram classificados!")
+        if st.button("Guardar e Finalizar Sessão"):
+            save_and_download(classificacoes)
+        return
 
-        if sinais_disponiveis.empty:
-            st.success("🎉 Você já classificou todos os sinais disponíveis!")
-        else:
-            sinal = sinais_disponiveis.iloc[0]
-            sinal_id = sinal["signal_id"]
-            heart_rate = sinal["heart_rate"]
-            sinal_raw = sinal["ecg_signal"]
+    idx = dados_pendentes.index[0]
+    ecg_id = classificacoes.loc[idx, "id"]
+    ecg_row = ecgs[ecgs["id"] == ecg_id]
 
-            try:
-                ecg_vals = [float(v.strip()) for v in str(sinal_raw).split(",") if v.strip()]
-            except:
-                st.error(f"Sinal {sinal_id} contém dados inválidos.")
-                st.stop()
+    st.write("### Dados do ECG")
+    st.dataframe(ecg_row)
 
-            st.subheader(f"Sinal ID: {sinal_id}")
-            st.write(f"Frequência cardíaca estimada: **{heart_rate} bpm**")
-            st.line_chart(ecg_vals[:9000])  # 30s @ 300Hz
+    classificacao = st.radio("Classificação", ["Normal", "Arritmia", "Outro"])
+    
+    if st.button("Submeter Classificação"):
+        classificacoes.at[idx, class_user_col] = classificacao
+        st.session_state["classificacoes"] = classificacoes
+        st.experimental_rerun()
 
-            st.markdown("### Escolha a classificação:")
-            classificacao = st.radio("Classificação:", ["Fibrillation", "Normal", "Noisy", "Other"])
-            comentario = st.text_input("Comentário (opcional):")
+    if st.button("Guardar e Finalizar Sessão"):
+        save_and_download(classificacoes)
 
-            if st.button("✅ Confirmar classificação"):
-                nova = {
-                    "signal_id": sinal_id,
-                    "user": usuario,
-                    "classificacao": classificacao,
-                    "comment": comentario,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                df_classificacoes = pd.concat([df_classificacoes, pd.DataFrame([nova])], ignore_index=True)
-                st.session_state.df_classificacoes = df_classificacoes
-                st.success("Classificação salva!")
-                st.rerun()
+def save_and_download(df):
+    output = io.BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+    st.download_button(
+        label="📥 Download Classificações Atualizadas",
+        data=output,
+        file_name="classificacoes_atualizadas.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    st.success("Pode agora descarregar o ficheiro atualizado.")
+    if st.button("Terminar Sessão"):
+        st.session_state.clear()
+        st.experimental_rerun()
 
-        with st.expander("📋 Classificações feitas nesta sessão"):
-            st.dataframe(st.session_state.df_classificacoes)
-
-        st.markdown("---")
-        st.subheader("📥 Finalizar classificação")
-
-        if st.button("⬇️ Finalizar e baixar classificações"):
-            df_final = st.session_state.df_classificacoes
-            xlsx_bytes = pd.ExcelWriter("/tmp/temp_classificacoes.xlsx", engine="xlsxwriter")
-            df_final.to_excel(xlsx_bytes, index=False, sheet_name="Classificacoes")
-            xlsx_bytes.close()
-            with open("/tmp/temp_classificacoes.xlsx", "rb") as f:
-                st.download_button(
-                    label="📥 Baixar como Excel",
-                    data=f,
-                    file_name=f"classificacoes_{usuario}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+def main():
+    if "user" not in st.session_state:
+        login()
+    elif "ecgs" not in st.session_state or "classificacoes" not in st.session_state:
+        upload_files()
     else:
-        st.info("Envie o arquivo .xlsx com colunas 'signal_id', 'heart_rate' e 'ecg_signal'.")
+        classificacao_interface(st.session_state["user"])
+
+if __name__ == "__main__":
+    main()
