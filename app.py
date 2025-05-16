@@ -19,30 +19,23 @@ def show_ecg_plot(signal, sampling_frequency=300, signal_id=None):
     import streamlit as st
 
     try:
-        # Se vier como pandas Series
         if isinstance(signal, pd.Series):
-            signal = signal.values
+            signal = signal.values[0]
 
-        # Se vier como string: tratar manualmente
         if isinstance(signal, str):
-            signal = signal.replace("Nan", "NaN")  # uniformizar
-            raw_values = signal.split(",")
+            signal = signal.replace("NaN", "nan")  # padronizar para o numpy reconhecer
+            parts = signal.split(",")
             values = []
-            for val in raw_values:
-                val = val.strip()
+            for p in parts:
                 try:
-                    values.append(float(val))
+                    values.append(float(p.strip()))
                 except ValueError:
-                    continue  # ignora valores inválidos
+                    continue  # ignora valores que não são conversíveis
             signal = np.array(values)
-
-        # Se vier como lista ou array
         else:
             signal = np.array(signal, dtype=float)
 
-        # Remover NaNs ou infinitos
         signal = signal[np.isfinite(signal)]
-
     except Exception as e:
         st.error(f"Erro ao processar sinal ECG {signal_id}: {e}")
         return
@@ -51,42 +44,39 @@ def show_ecg_plot(signal, sampling_frequency=300, signal_id=None):
         st.warning(f"ECG signal ID {signal_id} está vazio ou inválido.")
         return
 
-    # Definir tempo e limitar a 30s
     t = np.arange(len(signal)) / sampling_frequency
     duration = 30
     samples_to_show = int(duration * sampling_frequency)
     t = t[:samples_to_show]
     signal = signal[:samples_to_show]
 
-    # Criar o gráfico
     fig, ax = plt.subplots(figsize=(16, 6), dpi=100)
     ax.set_facecolor("white")
     ax.set_xlim([0, 30])
     ax.set_ylim([-200, 500])
     ax.set_xlabel("Tempo (segundos)")
     ax.set_ylabel("ECG (μV)")
-    ax.set_title(f"ECG Signal ID {signal_id}" if signal_id else "ECG Signal")
+    ax.set_title(f"ECG Signal ID {signal_id}")
 
-    # Grades verticais (tempo)
+    # Grade vermelha vertical (tempo)
     for i in np.arange(0, 30, 0.2):
         ax.axvline(i, color='red', linewidth=0.5, alpha=0.3)
     for i in np.arange(0, 30, 0.04):
         ax.axvline(i, color='red', linewidth=0.5, alpha=0.1)
 
-    # Grades horizontais (amplitude)
+    # Grade vermelha horizontal (amplitude)
     for i in np.arange(-200, 500, 50):
         ax.axhline(i, color='red', linewidth=0.5, alpha=0.3)
     for i in np.arange(-200, 500, 10):
         ax.axhline(i, color='red', linewidth=0.5, alpha=0.1)
 
-    # Plot do sinal
     ax.plot(t, signal, color='black', linewidth=0.8)
     ax.set_xticks(np.arange(0, 30.1, 2.5))
     ax.set_yticks(np.arange(-200, 550, 100))
 
-    # Mostrar no Streamlit
     plt.tight_layout()
     st.pyplot(fig)
+
 
 
 
@@ -113,18 +103,6 @@ def upload_files():
         try:
             ecgs = pd.read_excel(ecg_file)
             classificacoes = pd.read_excel(class_file)
-
-            df = pd.read_excel("ecgs.xlsx")
-
-            # Ver tipo de coluna
-            print(df["signal"].dtype)
-            
-            # Ver os primeiros sinais
-            for i in range(3):
-                print(f"--- Sinal {i+1} ---")
-                print(df["signal"].iloc[i])
-                print(type(df["signal"].iloc[i]))
-
 
             if "signal_id" not in ecgs.columns or "signal_id" not in classificacoes.columns:
                 st.error("Coluna 'signal_id' ausente num dos ficheiros.")
