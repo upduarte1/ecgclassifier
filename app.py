@@ -117,6 +117,20 @@ def upload_files():
 
 def classificacao_interface(user):
     st.title(f"Classificação - Utilizador {user}")
+
+    # Calcular progresso
+    ecgs = st.session_state["ecgs"]
+    classificacoes = st.session_state["classificacoes"]
+    
+    total = len(ecgs)
+    classificados_user = classificacoes[classificacoes["user"] == int(user)]["signal_id"].nunique()
+    percentual = classificados_user / total if total > 0 else 0
+    
+    # Exibir barra de progresso
+    st.write(f"Progresso: {classificados_user} de {total} sinais classificados ({percentual:.0%})")
+    st.progress(percentual)
+
+
     ecgs = st.session_state["ecgs"]
     classificacoes = st.session_state["classificacoes"]
 
