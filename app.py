@@ -42,14 +42,15 @@ def upload_files():
 def classificacao_interface(user):
     st.title(f"Classificação de ECGs - Utilizador {user}")
 
-    ecgs = st.session_state["ecgs"]
-    classificacoes = st.session_state["classificacoes"]
+    ecgs = pd.read_excel(ecg_file, dtype={"signal_id": str})
+    classificacoes = pd.read_excel(class_file, dtype={"signal_id": str})
+    
 
     # Sinais já classificados por este utilizador
     classificados_user = classificacoes[classificacoes["user"] == int(user)]["signal_id"].unique()
+    pendentes = ecgs[~ecgs["signal_id"].isin(classificados_user)]
 
     # Selecionar sinais ainda não classificados por este user
-    pendentes = ecgs[~ecgs["signal_id"].isin(classificados_user)]
 
     if pendentes.empty:
         st.success("Todos os registos foram classificados por este utilizador.")
