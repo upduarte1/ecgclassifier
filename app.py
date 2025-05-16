@@ -46,9 +46,6 @@ else:
     # Upload dos arquivos
     file_xlsx = st.file_uploader("Arquivo .xlsx com sinais ECG", type=["xlsx"])
     file_csv = st.file_uploader("Arquivo .csv com classificações anteriores", type=["csv"])
-
-    # Upload do arquivo com classificações do usuário
-    file_csv = st.file_uploader("Arquivo .csv com classificações anteriores", type=["csv"])
     
     if file_xlsx is not None:
         try:
