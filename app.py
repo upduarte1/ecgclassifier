@@ -13,7 +13,7 @@ def login():
         if username in USERS and USERS[username] == password:
             st.session_state["user"] = username
             st.success("Login com sucesso!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Credenciais inválidas")
 
@@ -30,7 +30,7 @@ def upload_files():
             st.session_state["classificacoes"] = classificacoes
             st.session_state["original_class_file"] = class_file.name
             st.success("Ficheiros carregados com sucesso!")
-            st.experimental_rerun()
+            st.rerun()
         except Exception as e:
             st.error(f"Erro ao ler os ficheiros: {e}")
 
@@ -64,7 +64,7 @@ def classificacao_interface(user):
     if st.button("Submeter Classificação"):
         classificacoes.at[idx, class_user_col] = classificacao
         st.session_state["classificacoes"] = classificacoes
-        st.experimental_rerun()
+        st.rerun()
 
     if st.button("Guardar e Finalizar Sessão"):
         save_and_download(classificacoes)
@@ -82,7 +82,7 @@ def save_and_download(df):
     st.success("Pode agora descarregar o ficheiro atualizado.")
     if st.button("Terminar Sessão"):
         st.session_state.clear()
-        st.experimental_rerun()
+        st.rerun()
 
 def main():
     if "user" not in st.session_state:
