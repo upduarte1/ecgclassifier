@@ -12,8 +12,24 @@ USERS = {
 }
 
 def show_ecg_plot(signal, sampling_frequency=300, signal_id=None):
-    signal = np.array(signal, dtype=float)
-    signal = signal[np.isfinite(signal)]
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    try:
+        # Garantir que é uma lista de floats simples
+        if isinstance(signal, pd.Series):
+            signal = signal.values
+
+        # Se estiver como uma string (ex: "[1, 2, 3]"), tenta avaliar
+        if isinstance(signal, str):
+            import ast
+            signal = ast.literal_eval(signal)
+
+        signal = np.array(signal, dtype=float).flatten()
+        signal = signal[np.isfinite(signal)]
+    except Exception as e:
+        st.error(f"Erro ao processar sinal ECG {signal_id}: {e}")
+        return
 
     if len(signal) == 0:
         st.warning(f"ECG signal ID {signal_id} is empty or invalid.")
@@ -47,6 +63,7 @@ def show_ecg_plot(signal, sampling_frequency=300, signal_id=None):
     ax.set_yticks(np.arange(-200, 550, 100))
     plt.tight_layout()
     st.pyplot(fig)
+
 
 def login():
     st.title("Login")
