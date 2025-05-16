@@ -13,6 +13,8 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "df_classificacoes" not in st.session_state:
     st.session_state.df_classificacoes = None
+if "df_ecg" not in st.session_state:
+    st.session_state.df_ecg = None
 
 # Login
 if not st.session_state.authenticated:
@@ -26,7 +28,7 @@ if not st.session_state.authenticated:
     if login_button:
         if username in USERS and password == USERS[username]:
             st.session_state.authenticated = True
-            st.session_state.username = username  # ✅ Definido apenas se o login for válido
+            st.session_state.username = username
             st.success("Login realizado com sucesso!")
             st.rerun()
         else:
@@ -39,81 +41,46 @@ else:
     if st.sidebar.button("Logout"):
         st.session_state.authenticated = False
         st.session_state.df_classificacoes = None
+        st.session_state.df_ecg = None
         st.rerun()
 
     st.header("📤 Envie seus arquivos")
 
     # Upload dos arquivos
-    file_xlsx = st.file_uploader("Arquivo .xlsx com sinais ECG", type=["xlsx"])
-    file_csv = st.file_uploader("Arquivo .csv com classificações anteriores", type=["csv"])
-    
-    if file_xlsx is not None:
+    file_ecg = st.file_uploader("Arquivo .xlsx com sinais ECG", type=["xlsx"], key="ecg_upload")
+    file_class = st.file_uploader("Arquivo .xlsx com classificações anteriores", type=["xlsx"], key="class_upload")
+
+    if file_ecg is not None:
         try:
-            df_ecg = pd.read_excel(file_xlsx)
+            df_ecg = pd.read_excel(file_ecg)
             if not {"signal_id", "ecg_signal", "heart_rate"}.issubset(df_ecg.columns):
-                st.error("O arquivo .xlsx precisa ter colunas 'signal_id', 'ecg_signal' e 'heart_rate'.")
+                st.error("O arquivo .xlsx de ECG precisa conter as colunas: 'signal_id', 'ecg_signal', 'heart_rate'.")
                 st.stop()
+            st.session_state.df_ecg = df_ecg
         except Exception as e:
-            st.error(f"Erro ao processar o .xlsx: {e}")
+            st.error(f"Erro ao processar o arquivo ECG: {e}")
             st.stop()
-    
-        import io
-        
-        if file_csv is not None:
-            try:
-                file_csv.seek(0)  # Reseta o ponteiro do arquivo para o início
-                decoded = file_csv.read().decode("utf-8-sig")
-                if not decoded.strip():
-                    st.warning("⚠️ O arquivo de classificações está vazio. Será criado um novo.")
-                    df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
-                else:
-                    df_classificacoes = pd.read_csv(io.StringIO(decoded), lineterminator='\n')
-            except Exception as e:
-                st.error(f"Erro ao processar o .csv de classificações: {e}")
-                st.stop()
-        else:
-            df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
 
-    
-        # Salva no session_state com segurança
-        st.session_state.df_classificacoes = df_classificacoes
-        st.session_state.df_ecg = df_ecg
-
-
-    if file_xlsx is not None:
+    if file_class is not None:
         try:
-            df_ecg = pd.read_excel(file_xlsx)
-            if not {"signal_id", "heart_rate", "ecg_signal"}.issubset(df_ecg.columns):
-                st.error("O arquivo .xlsx precisa ter colunas: 'signal_id', 'heart_rate' e 'ecg_signal'.")
-                st.stop()
-        except Exception as e:
-            st.error(f"Erro ao processar o .xlsx: {e}")
-            st.stop()
-
-        # Carrega ou inicia classificações
-        if file_csv is not None:
-            try:
-                df_classificacoes = pd.read_csv(file_csv)
-            except Exception as e:
-                st.error(f"Erro ao processar o .csv de classificações: {e}")
-                st.stop()
-        else:
-            df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
-
-        # Inicializa classificações em sessão
-        if st.session_state.df_classificacoes is None:
+            df_classificacoes = pd.read_excel(file_class)
             st.session_state.df_classificacoes = df_classificacoes
+        except Exception as e:
+            st.error(f"Erro ao processar o arquivo de classificações: {e}")
+            st.stop()
+    elif file_ecg is not None and st.session_state.df_classificacoes is None:
+        st.session_state.df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
 
-        usuario = st.session_state.username
+    # Prosseguir somente se ECG foi carregado
+    if st.session_state.df_ecg is not None:
+        df_ecg = st.session_state.df_ecg
         df_classificacoes = st.session_state.df_classificacoes
         usuario = st.session_state.username
-        
-        if "user" not in df_classificacoes.columns:
-            st.error("Coluna 'user' não encontrada nas classificações.")
-            st.stop()
-        
-        ids_classificados = df_classificacoes[df_classificacoes["user"] == usuario]["signal_id"].tolist()
 
+        if not "user" in df_classificacoes.columns:
+            df_classificacoes = pd.DataFrame(columns=["signal_id", "user", "classificacao", "comment", "timestamp"])
+
+        ids_classificados = df_classificacoes[df_classificacoes["user"] == usuario]["signal_id"].tolist()
         sinais_disponiveis = df_ecg[~df_ecg["signal_id"].isin(ids_classificados)]
 
         if sinais_disponiveis.empty:
@@ -125,9 +92,9 @@ else:
             sinal_raw = sinal["ecg_signal"]
 
             try:
-                ecg_vals = [float(v.strip()) for v in str(sinal_raw).split(",") if v.strip() != ""]
+                ecg_vals = [float(v.strip()) for v in str(sinal_raw).split(",") if v.strip()]
             except:
-                st.error(f"Sinal {sinal_id} contém dados de ECG inválidos.")
+                st.error(f"Sinal {sinal_id} contém dados inválidos.")
                 st.stop()
 
             st.subheader(f"Sinal ID: {sinal_id}")
@@ -146,28 +113,28 @@ else:
                     "comment": comentario,
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
-                st.session_state.df_classificacoes = pd.concat([
-                    st.session_state.df_classificacoes,
-                    pd.DataFrame([nova])
-                ], ignore_index=True)
+                df_classificacoes = pd.concat([df_classificacoes, pd.DataFrame([nova])], ignore_index=True)
+                st.session_state.df_classificacoes = df_classificacoes
                 st.success("Classificação salva!")
                 st.rerun()
 
-        # Exibir classificações atuais
-        with st.expander("🔍 Ver classificações feitas nesta sessão"):
+        with st.expander("📋 Classificações feitas nesta sessão"):
             st.dataframe(st.session_state.df_classificacoes)
 
-        # Finalizar e baixar
         st.markdown("---")
-        st.subheader("📁 Finalizar classificação")
+        st.subheader("📥 Finalizar classificação")
 
-        if st.button("📥 Finalizar e baixar classificações"):
-            csv_final = st.session_state.df_classificacoes.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="⬇️ Baixar classificações atualizadas",
-                data=csv_final,
-                file_name=f"classificacoes_{usuario}.csv",
-                mime="text/csv"
-            )
+        if st.button("⬇️ Finalizar e baixar classificações"):
+            df_final = st.session_state.df_classificacoes
+            xlsx_bytes = pd.ExcelWriter("/tmp/temp_classificacoes.xlsx", engine="xlsxwriter")
+            df_final.to_excel(xlsx_bytes, index=False, sheet_name="Classificacoes")
+            xlsx_bytes.close()
+            with open("/tmp/temp_classificacoes.xlsx", "rb") as f:
+                st.download_button(
+                    label="📥 Baixar como Excel",
+                    data=f,
+                    file_name=f"classificacoes_{usuario}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
     else:
-        st.info("Envie um arquivo .xlsx com colunas 'signal_id', 'heart_rate' e 'ecg_signal'.")
+        st.info("Envie o arquivo .xlsx com colunas 'signal_id', 'heart_rate' e 'ecg_signal'.")
