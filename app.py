@@ -19,16 +19,21 @@ def login():
 
 def upload_files():
     st.title("Carregamento de Ficheiros")
-    ecg_file = st.file_uploader("Carregar ECGs (ecgs.xlsx)", type="xlsx", key="ecg")
-    class_file = st.file_uploader("Carregar Classificações (classificacoes.xlsx)", type="xlsx", key="class")
+    ecg_file = st.file_uploader("Carregar ECGs (ecgs.xlsx)", type="xlsx")
+    class_file = st.file_uploader("Carregar Classificações (classificacoes.xlsx)", type="xlsx")
 
     if ecg_file and class_file:
         try:
             ecgs = pd.read_excel(ecg_file)
             classificacoes = pd.read_excel(class_file)
+
+            # Verificação básica
+            if "signal_id" not in ecgs.columns or "signal_id" not in classificacoes.columns:
+                st.error("Ficheiros inválidos: coluna 'signal_id' ausente.")
+                return
+
             st.session_state["ecgs"] = ecgs
             st.session_state["classificacoes"] = classificacoes
-            st.session_state["original_class_file"] = class_file.name
             st.success("Ficheiros carregados com sucesso!")
             st.experimental_rerun()
         except Exception as e:
@@ -40,14 +45,14 @@ def classificacao_interface(user):
     ecgs = st.session_state["ecgs"]
     classificacoes = st.session_state["classificacoes"]
 
-    # ECGs já classificados por este utilizador
+    # Sinais já classificados por este utilizador
     classificados_user = classificacoes[classificacoes["user"] == int(user)]["signal_id"].unique()
 
-    # ECGs por classificar por este utilizador
+    # Selecionar sinais ainda não classificados por este user
     pendentes = ecgs[~ecgs["signal_id"].isin(classificados_user)]
 
     if pendentes.empty:
-        st.success("Todos os registos foram classificados!")
+        st.success("Todos os registos foram classificados por este utilizador.")
         if st.button("Guardar e Finalizar Sessão"):
             save_and_download(st.session_state["classificacoes"])
         return
@@ -55,24 +60,24 @@ def classificacao_interface(user):
     ecg_row = pendentes.iloc[0]
     signal_id = ecg_row["signal_id"]
 
-    st.write(f"### ECG ID: {signal_id}")
+    st.subheader(f"Sinal #{signal_id}")
     st.dataframe(ecg_row.to_frame().T)
 
     classificacao = st.radio("Classificação", ["Normal", "Arritmia", "Outro"])
     comentario = st.text_area("Comentário (opcional)")
 
     if st.button("Submeter Classificação"):
-        nova_class = {
+        nova_linha = {
             "signal_id": signal_id,
             "user": int(user),
             "classificacao": classificacao,
             "comment": comentario,
             "timestamp": datetime.now()
         }
-        st.session_state["classificacoes"] = pd.concat([
-            st.session_state["classificacoes"],
-            pd.DataFrame([nova_class])
-        ], ignore_index=True)
+        st.session_state["classificacoes"] = pd.concat(
+            [st.session_state["classificacoes"], pd.DataFrame([nova_linha])],
+            ignore_index=True
+        )
         st.success("Classificação registada.")
         st.experimental_rerun()
 
@@ -89,12 +94,12 @@ def save_and_download(df):
         file_name="classificacoes_atualizadas.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    st.success("Pode agora descarregar o ficheiro atualizado.")
     if st.button("Terminar Sessão"):
         st.session_state.clear()
         st.experimental_rerun()
 
 def main():
+    st.set_page_config(page_title="Classificador de ECGs")
     if "user" not in st.session_state:
         login()
     elif "ecgs" not in st.session_state or "classificacoes" not in st.session_state:
