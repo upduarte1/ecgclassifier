@@ -79,7 +79,6 @@ def classificacao_interface(user):
             ignore_index=True
         )
         st.success("Classificação registada.")
-        st.experimental_rerun()
 
     if st.button("Guardar e Finalizar Sessão"):
         save_and_download(st.session_state["classificacoes"])
