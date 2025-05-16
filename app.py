@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import io
+from datetime import datetime
 
-# Usuários válidos
 USERS = {"1": "1234", "2": "1234", "3": "1234"}
 
 def login():
@@ -13,7 +13,7 @@ def login():
         if username in USERS and USERS[username] == password:
             st.session_state["user"] = username
             st.success("Login com sucesso!")
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.error("Credenciais inválidas")
 
@@ -30,44 +30,54 @@ def upload_files():
             st.session_state["classificacoes"] = classificacoes
             st.session_state["original_class_file"] = class_file.name
             st.success("Ficheiros carregados com sucesso!")
-            st.rerun()
+            st.experimental_rerun()
         except Exception as e:
             st.error(f"Erro ao ler os ficheiros: {e}")
 
 def classificacao_interface(user):
     st.title(f"Classificação de ECGs - Utilizador {user}")
-    
+
     ecgs = st.session_state["ecgs"]
     classificacoes = st.session_state["classificacoes"]
 
-    class_user_col = f"class_user_{user}"
-    if class_user_col not in classificacoes.columns:
-        classificacoes[class_user_col] = None
+    # ECGs já classificados por este utilizador
+    classificados_user = classificacoes[classificacoes["user"] == int(user)]["signal_id"].unique()
 
-    dados_pendentes = classificacoes[classificacoes[class_user_col].isna()]
+    # ECGs por classificar por este utilizador
+    pendentes = ecgs[~ecgs["signal_id"].isin(classificados_user)]
 
-    if dados_pendentes.empty:
+    if pendentes.empty:
         st.success("Todos os registos foram classificados!")
         if st.button("Guardar e Finalizar Sessão"):
-            save_and_download(classificacoes)
+            save_and_download(st.session_state["classificacoes"])
         return
 
-    idx = dados_pendentes.index[0]
-    ecg_id = classificacoes.loc[idx, "id"]
-    ecg_row = ecgs[ecgs["id"] == ecg_id]
+    ecg_row = pendentes.iloc[0]
+    signal_id = ecg_row["signal_id"]
 
-    st.write("### Dados do ECG")
-    st.dataframe(ecg_row)
+    st.write(f"### ECG ID: {signal_id}")
+    st.dataframe(ecg_row.to_frame().T)
 
     classificacao = st.radio("Classificação", ["Normal", "Arritmia", "Outro"])
-    
+    comentario = st.text_area("Comentário (opcional)")
+
     if st.button("Submeter Classificação"):
-        classificacoes.at[idx, class_user_col] = classificacao
-        st.session_state["classificacoes"] = classificacoes
-        st.rerun()
+        nova_class = {
+            "signal_id": signal_id,
+            "user": int(user),
+            "classificacao": classificacao,
+            "comment": comentario,
+            "timestamp": datetime.now()
+        }
+        st.session_state["classificacoes"] = pd.concat([
+            st.session_state["classificacoes"],
+            pd.DataFrame([nova_class])
+        ], ignore_index=True)
+        st.success("Classificação registada.")
+        st.experimental_rerun()
 
     if st.button("Guardar e Finalizar Sessão"):
-        save_and_download(classificacoes)
+        save_and_download(st.session_state["classificacoes"])
 
 def save_and_download(df):
     output = io.BytesIO()
@@ -82,7 +92,7 @@ def save_and_download(df):
     st.success("Pode agora descarregar o ficheiro atualizado.")
     if st.button("Terminar Sessão"):
         st.session_state.clear()
-        st.rerun()
+        st.experimental_rerun()
 
 def main():
     if "user" not in st.session_state:
