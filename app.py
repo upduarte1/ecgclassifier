@@ -11,16 +11,6 @@ USERS = {
     "User 3": ("3", "1234")
 }
 
-df = pd.read_excel("ecgs.xlsx")
-
-# Ver tipo de coluna
-print(df["signal"].dtype)
-
-# Ver os primeiros sinais
-for i in range(3):
-    print(f"--- Sinal {i+1} ---")
-    print(df["signal"].iloc[i])
-    print(type(df["signal"].iloc[i]))
 
 def show_ecg_plot(signal, sampling_frequency=300, signal_id=None):
     import matplotlib.pyplot as plt
@@ -123,6 +113,18 @@ def upload_files():
         try:
             ecgs = pd.read_excel(ecg_file)
             classificacoes = pd.read_excel(class_file)
+
+            df = pd.read_excel("ecgs.xlsx")
+
+            # Ver tipo de coluna
+            print(df["signal"].dtype)
+            
+            # Ver os primeiros sinais
+            for i in range(3):
+                print(f"--- Sinal {i+1} ---")
+                print(df["signal"].iloc[i])
+                print(type(df["signal"].iloc[i]))
+
 
             if "signal_id" not in ecgs.columns or "signal_id" not in classificacoes.columns:
                 st.error("Coluna 'signal_id' ausente num dos ficheiros.")
