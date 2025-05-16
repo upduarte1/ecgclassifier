@@ -42,9 +42,14 @@ def upload_files():
 def classificacao_interface(user):
     st.title(f"Classificação de ECGs - Utilizador {user}")
 
-    ecgs = pd.read_excel(ecg_file, dtype={"signal_id": str})
-    classificacoes = pd.read_excel(class_file, dtype={"signal_id": str})
+    ecgs = st.session_state["ecgs"]
+    classificacoes = st.session_state["classificacoes"]
     
+    # garantir que signal_id é string em ambos os DataFrames
+    ecgs["signal_id"] = ecgs["signal_id"].astype(str)
+    classificacoes["signal_id"] = classificacoes["signal_id"].astype(str)
+    
+        
 
     # Sinais já classificados por este utilizador
     classificados_user = classificacoes[classificacoes["user"] == int(user)]["signal_id"].unique()
