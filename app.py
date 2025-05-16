@@ -131,7 +131,7 @@ def classificacao_interface(user):
 
     ecg_row = pendentes.iloc[0]
     signal_id = ecg_row["signal_id"]
-    signal = ecg_row.drop(["signal_id", "heart_rate"], errors="ignore").values
+    signal = ecg_row["ecg_signal"]
     heart_rate = ecg_row["heart_rate"] if "heart_rate" in ecg_row else "N/A"
 
     st.subheader(f"Sinal ID: {signal_id}")
