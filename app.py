@@ -16,23 +16,24 @@ def show_ecg_plot(signal, sampling_frequency=300, signal_id=None):
     import numpy as np
 
     try:
-        # Garantir que é uma lista de floats simples
         if isinstance(signal, pd.Series):
             signal = signal.values
 
-        # Se estiver como uma string (ex: "[1, 2, 3]"), tenta avaliar
         if isinstance(signal, str):
-            import ast
-            signal = ast.literal_eval(signal)
+            # Corrige vírgulas e "Nan"
+            signal = signal.replace("Nan", "NaN")
+            values = [float(x.strip().replace(",", ".")) for x in signal.split(",") if x.strip()]
+            signal = np.array(values)
+        else:
+            signal = np.array(signal, dtype=float)
 
-        signal = np.array(signal, dtype=float).flatten()
         signal = signal[np.isfinite(signal)]
     except Exception as e:
         st.error(f"Erro ao processar sinal ECG {signal_id}: {e}")
         return
 
     if len(signal) == 0:
-        st.warning(f"ECG signal ID {signal_id} is empty or invalid.")
+        st.warning(f"ECG signal ID {signal_id} está vazio ou inválido.")
         return
 
     t = np.arange(len(signal)) / sampling_frequency
@@ -47,7 +48,7 @@ def show_ecg_plot(signal, sampling_frequency=300, signal_id=None):
     ax.set_ylim([-200, 500])
     ax.set_xlabel("Tempo (segundos)")
     ax.set_ylabel("ECG (μV)")
-    ax.set_title(f"ECG Signal ID {signal_id}" if signal_id else "ECG Signal")
+    ax.set_title(f"ECG Signal ID {signal_id}")
 
     for i in np.arange(0, 30, 0.2):
         ax.axvline(i, color='red', linewidth=0.5, alpha=0.3)
