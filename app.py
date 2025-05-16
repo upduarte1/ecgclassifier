@@ -28,7 +28,7 @@ if not st.session_state.authenticated:
             st.session_state.authenticated = True
             st.session_state.username = username  # ✅ Definido apenas se o login for válido
             st.success("Login realizado com sucesso!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Usuário ou senha inválidos.")
 
@@ -39,7 +39,7 @@ else:
     if st.sidebar.button("Logout"):
         st.session_state.authenticated = False
         st.session_state.df_classificacoes = None
-        st.experimental_rerun()
+        st.rerun()
 
     st.header("📤 Envie seus arquivos")
 
