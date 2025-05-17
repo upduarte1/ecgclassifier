@@ -30,10 +30,11 @@ def salvar_classificacao_online(user, signal_id, classificacao, comentario=""):
             "timestamp": datetime.now().isoformat()
         }
         res = supabase.table("classificacoes_ecg").insert(data).execute()
-        if res.status_code != 201:
-            st.error(f"Erro ao salvar no Supabase: {res.data}")
+        if res.error:
+            st.error(f"Erro ao salvar no Supabase: {res.error.message}")
         else:
             st.success(f"Classificação '{classificacao}' salva com sucesso no Supabase.")
+
     except Exception as e:
         st.error(f"Erro ao conectar ao Supabase: {e}")
 
