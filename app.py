@@ -4,6 +4,7 @@ import numpy as np
 import io
 import matplotlib.pyplot as plt
 from datetime import datetime
+pip install supabase
 
 USERS = {
     "User 1": ("1", "1234"),
