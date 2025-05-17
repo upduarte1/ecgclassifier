@@ -12,6 +12,31 @@ USERS = {
 }
 
 
+from supabase import create_client
+from datetime import datetime
+
+SUPABASE_URL = "https://miqplauvkmwivdmwtfba.supabase.co"  # <- substitui com o seu URL
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pcXBsYXV2a213aXZkbXd0ZmJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc1MTY4MzQsImV4cCI6MjA2MzA5MjgzNH0.zXeIZkycp6XpboRR8jWPDk1mH-JFbZf50vEw7ab4t0g"          # <- substitui com sua API Key
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def salvar_classificacao_online(user, signal_id, classificacao, comentario=""):
+    try:
+        data = {
+            "signal_id": str(signal_id),
+            "user": str(user),
+            "classificacao": classificacao,
+            "comentario": comentario,
+            "timestamp": datetime.now().isoformat()
+        }
+        res = supabase.table("classificacoes_ecg").insert(data).execute()
+        if res.status_code != 201:
+            st.error(f"Erro ao salvar no Supabase: {res.data}")
+        else:
+            st.success(f"Classificação '{classificacao}' salva com sucesso no Supabase.")
+    except Exception as e:
+        st.error(f"Erro ao conectar ao Supabase: {e}")
+
 def show_ecg_plot(signal, sampling_frequency=300, signal_id=None):
     import matplotlib.pyplot as plt
     import numpy as np
@@ -170,18 +195,22 @@ def classificacao_interface(user):
         save_and_download(classificacoes)
 
 def salvar_classificacao(user, signal_id, classificacao, comentario=""):
-    nova = {
-        "signal_id": signal_id,
-        "user": int(user),
-        "classificacao": classificacao,
-        "comment": comentario,
-        "timestamp": datetime.now()
-    }
-    st.session_state["classificacoes"] = pd.concat([
-        st.session_state["classificacoes"], pd.DataFrame([nova])
-    ], ignore_index=True)
-    st.success(f"Classificação '{classificacao}' registada para sinal {signal_id}")
+
+    salvar_classificacao_online(user, signal_id, classificacao, comentario)
     st.rerun()
+
+    #nova = {
+     #   "signal_id": signal_id,
+      #  "user": int(user),
+       # "classificacao": classificacao,
+        #"comment": comentario,
+        #"timestamp": datetime.now()
+    #}
+    #st.session_state["classificacoes"] = pd.concat([
+     #   st.session_state["classificacoes"], pd.DataFrame([nova])
+    #], ignore_index=True)
+    #st.success(f"Classificação '{classificacao}' registada para sinal {signal_id}")
+    #st.rerun()
 
 def save_and_download(df):
     output = io.BytesIO()
