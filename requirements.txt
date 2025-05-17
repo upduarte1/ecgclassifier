@@ -3,3 +3,4 @@ pandas
 numpy
 matplotlib
 openpyxl
+git+https://github.com/supabase-community/supabase-py
